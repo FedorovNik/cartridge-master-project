@@ -7,7 +7,7 @@ from aiogram import Bot, Router, F
 from aiogram.filters import Command, BaseFilter, CommandObject
 from aiogram.methods.send_message import SendMessage
 from aiogram.types import Message
-
+import re
 
 
 import platform
@@ -166,72 +166,100 @@ async def list_users(message: Message) -> None:
         text += f"Имя:  <b>{user[2]}</b>  -  ID: {user[1]} -  Уведомления: {user[3]}\n"
     await message.answer(text, parse_mode="HTML")
 
-# Хэндлер для команды /list, выводит всю инфу по картриджам из базы.
 @rt.message(Command("list"))
-async def list_cartridges(message: Message) -> Message | SendMessage | None:
-    # В cartridges копируем кортеж из (id, cartridge_name, quantity, all_barcodes, last_update) по каждому картриджу.
-    cartridges: logging.Iterable[Row] = await get_all_cartridges()
-    # Простая проверка на существование 
+async def list_cartridges(message: Message, command: CommandObject) -> None:
+    # Получаем все картриджи из БД
+    cartridges = await get_all_cartridges()
+    
     if not cartridges:
-        return await message.answer("Склад пуст!\
-                                    \nКартриджи не найдены.", parse_mode="HTML")
+        await message.answer("Склад пуст!\nКартриджи не найдены.", parse_mode="HTML")
+        return
 
-    header = "<b>Текущие остатки на складе:</b>\n"
+    # Анализ аргументов и регуляка
+    search_pattern = None
+    if command.args: # Если после /list есть текст
+        try:
+            # Компилируем регулярку игнорируя регистр
+            search_pattern = re.compile(command.args, re.IGNORECASE)
+        except re.error:
+            await message.answer("Ошибка в синтаксисе регулярного выражения!", parse_mode="HTML")
+            return
+
+    # Настраиваем заголовок в зависимости от того, есть ли поиск
+    if search_pattern:
+        header = f"<b>Результаты поиска по:</b> <code>{command.args}</code>\n"
+    else:
+        header = "<b>Текущие остатки на складе:</b>\n"
     header += "<code>" + "—" * 33 + "</code>\n"
     
     text_lines = []
-    # Нужно пройтись по каждому айтему из кортежа cartridges и собрать текст text_lines для ответа
+    
     for item in cartridges:
+        id_val, cartridge_name, quantity, all_barcodes, last_update = item
 
-        # элемент кортежа cartridges распаковываем в переменные для удобства
-        id, cartridge_name, quantity, all_barcodes, last_update = item
+        # ФИЛЬТРАЦИЯ ПО РЕГУЛЯРКЕ!!!!
+        # Если есть паттерн поиска, и имя картриджа под него НЕ попадает — пропускаем итерацию
+        if search_pattern and not search_pattern.search(str(cartridge_name)):
+            continue
 
-        # Индикатор остатка, можно потом создать в базе поле с минимальными порогами для каждого картриджа и сравнивать с ним.
         status_color: str = ""
         if quantity >= 6:
             status_color = "✅ Норм!  "
         elif quantity >= 3:
-            status_color = "⚠️Средне!"
+            status_color = "⚠️ Средне!"
         elif quantity >= 0:
             status_color = "❌ Мало!  "
         else:
-            # Если количество отрицательное, то это косяк в базе, который нужно исправить
-            logger.error(f"| TELEGRAM |   НЕДОПУСТИМО   | Отрицательное количество | ID: {id} Наименование: {cartridge_name} Количество: {quantity}")
-            return message.answer(f"В базе отрицательное количество!\
-                                  \nID:{id}\
-                                  \nШтрих-код:{all_barcodes}\
-                                  \nНаименование:{cartridge_name}\
-                                  \nКоличество:{quantity}")
+            logger.error(f"| TELEGRAM |   НЕДОПУСТИМО   | Отрицательное количество | ID: {id_val} Наименование: {cartridge_name} Количество: {quantity}")
+            await message.answer(
+                f"В базе отрицательное количество!\n"
+                f"ID: {id_val}\n"
+                f"Штрих-код: {all_barcodes}\n"
+                f"Наименование: {cartridge_name}\n"
+                f"Количество: {quantity}"
+            )
+            continue # Лучше пропустить этот проблемный пункт, но продолжить вывод остальных
         
-        # Фромируем строку для каждого картриджа
-        line: str = f"{status_color}      <b>{cartridge_name}</b>\n"
+        # Формируем блок для одного картриджа
+        line = f"{status_color}      <b>{cartridge_name}</b>\n"
         line += f"Количество:   <b>{quantity}</b> шт.\n"
 
-        # Плодим еще сущности, потому что по-другому хз как вывести нормально..
-        barcodes_list = all_barcodes.split("; ")
-        for barcode in barcodes_list:
-            line += f"Штрих-код:     <b>{barcode}</b>\n"
+        if all_barcodes:
+            barcodes_list = all_barcodes.split("; ")
+            for barcode in barcodes_list:
+                line += f"Штрих-код:     <b>{barcode}</b>\n"
 
         line += f"Изменение:    <b>{last_update}</b>\n"
-        line += f"ID в базе:         <b>{id}</b>\n"
+        line += f"ID в базе:         <b>{id_val}</b>\n\n"
+        
         text_lines.append(line)
 
-    # Лимит на сообщение в ТГ 4096 символов    
-    # ПЕРЕПИСАТЬ ЭТУ ХРЕНЬ КОГДА ПРИДУМАЮ ЧТО-НИБУДЬ ПОЛУЧШЕ
-    # Собираем полное сообщение из частей и отправляем его в ответ на команду /list
-    # Надо не превысить лимит телеги в 4096 символов
+    # Если после фильтрации ничего не осталось
+    if not text_lines:
+        await message.answer("По запросу ничего не найдено!", parse_mode="HTML")
+        return
 
-    # Считаем половину элментов массива
-    half = int(len(text_lines)/2)
-    # Формируем строку из первой половины текста
-    one_half_text = header + "\n".join(text_lines[0:half:1])
-    # Формируем строку из второй половины текста
-    second_half_text = "\n".join(text_lines[half::1])
-    # Отправляем оба сообщения 
-    await message.answer(one_half_text, parse_mode="HTML")
-    await message.answer(second_half_text, parse_mode="HTML")
+    # АДЕКВАТНАЯ РАЗБИВКА НА СООБЩЕНИЯ - замена старой хрени
+    # Лимит телеги 4096 символов. Будем собирать сообщения кусками по 4000 символов,
+    # чтобы  не обрезать HTML-теги на полуслове.
+    messages_to_send = []
+    current_msg = header
+    
+    for line in text_lines:
+        # Если добавление следующего блока превысит лимит (запас в 96 символов)
+        if len(current_msg) + len(line) > 4000:
+            messages_to_send.append(current_msg)
+            current_msg = line # Начинаем собирать новое сообщение с текущего блока
+        else:
+            current_msg += line
+            
+    # добавить последний собранный кусок
+    if current_msg:
+        messages_to_send.append(current_msg)
 
-    return
+    # все собранные куски по очереди
+    for msg in messages_to_send:
+        await message.answer(msg, parse_mode="HTML")
 
 
 @rt.message(Command("notice"))
