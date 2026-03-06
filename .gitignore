@@ -1,17 +1,20 @@
-# Logs
-logs
-*.log
+# Окружение
+.venv/
+env/
+venv/
+
+# Кэш Python
+__pycache__/
+*.pyc
+
+# Токен бота, потом хранить в path
+app/bot/token.py
+
+# Файлы бд и (временные логи транзакций и индексации плагин DBcode)
 *.db
-token.py
+*.db-shm
+*.db-wal
 
-# Build output
-dist/
-build/
-
-# Environment variables
-.env
-.venv
-
-# IDE files
+# Системные файлы
 .vscode/
-.idea/
+.DS_Store
