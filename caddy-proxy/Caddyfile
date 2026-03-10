@@ -1,4 +1,22 @@
-10.0.9.173 {
+# Блок для HTTP 80 порт
+http://10.0.9.173 {
+    # Если uri совпадает с..
+    @scan {
+        path /scan /scan/*
+    }
+    # Отправляем в бэк 8080 порт
+    handle @scan {
+        reverse_proxy localhost:8080
+    }
+    # Все остальное идет нафиг
+    handle {
+        abort
+    }
+}
+
+# Блок для HTTPS 443 (Колдовство caddy с сертификатами)
+https://10.0.9.173 {
+    # С https перекидываем всё на бэк 8080 порт
     reverse_proxy localhost:8080
     tls internal
 }

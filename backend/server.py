@@ -2,6 +2,10 @@ from fastapi import FastAPI, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+import logging
+import sys
+import uvicorn
+from uvicorn.logging import DefaultFormatter
 from pydantic import BaseModel
 
 from Crypto.Cipher import AES
@@ -10,11 +14,32 @@ from Crypto.Util.Padding import unpad, pad
 from contextlib import asynccontextmanager
 import time
 import asyncio
-import uuid
 
+import socket
 import aiosqlite
 import json
 import base64
+
+
+# Создаем базовый логгер
+logger = logging.getLogger("my_custom_logger")
+logger.setLevel(logging.INFO)
+
+# Используем DefaultFormatter как в uvicorn
+formatter = DefaultFormatter("%(levelprefix)s %(message)s")
+
+# Настраиваем вывод в консоль
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+
+
+hostname: str = socket.gethostname()
+local_ip: str = socket.gethostbyname(hostname)
+
+logger.info(f"IP-адрес: {local_ip}")
+logger.info(f"Имя хоста: {hostname}")
 
 
 
@@ -22,13 +47,16 @@ import base64
 # Хранилище уникальных ID для каждого запроса от ТСД
 processed_requests = set()
 
-# Фоновая задача для очистки старых ID (раз в 6 часов)
+# Фоновая задача для очистки старых ID (раз в 6 часов, для тестов каждые 10 сек)
 async def clean_ids_task():
     while True:
-        await asyncio.sleep(3600)
-        print(processed_requests)
+        try:
+            await asyncio.sleep(3600)
+        except Exception:
+            logger.error(f"Функция для очистки сета ID-транзакций не запустилась!")
+        total_cleared = len(processed_requests)
         processed_requests.clear()
-        print("Список ID-транзакций от ТСД очищен!")
+        logger.info(f"Набор недавних ID-транзакций от ТСД очищен. Удалено: {total_cleared}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -62,6 +90,7 @@ async def lifespan(app: FastAPI):
                 FOREIGN KEY (cartridge_id) REFERENCES cartridges(id)
             )
         """)
+        logger.info(f"БД SQLite проинициализована или уже существует.")
         await db.commit()
 
 
@@ -169,7 +198,7 @@ async def process_scan(data: ScanRequest):
         # Защита от Reply-атаки:
         # Изначальная проблема: содержимое пакета (в виде {payload: base64} ) можно стащить снифером и отправить серверу опять.
         # Гениальное и удивительно простое решение!
-        # Полученный пакет действителен 10 секунд и только если его НЕТ в сете processed_requests.
+        # Полученный пакет действителен 10 секунд с момента генерации и только если его НЕТ в сете processed_requests.
         # Кул-хацкер может успеть за 10 секунд скопировать содержимое пакета и отправить серверу еще раз, 
         # но сервер этот пакет уже обработал и занёс айдишник из тела json в processed_requests.
         # processed_requests чистится, поэтому дополнительно нужна еще и проверка на время (10 секунд), 
@@ -272,6 +301,9 @@ async def root_redirect():
     return RedirectResponse(url='/admin-ui/')
 
 if __name__ == "__main__":
-    import uvicorn
-    # Никакого reload=True здесь быть не должно во время дебага!
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    
+    logger.info(f"Выполняется запуск uvicorn-процесса...")
+    # Uvicorn слушает только запросы с сервера, на котором он запущен.
+    # Сделано так, для того, чтобы нельзя было попаcть на него "в обход"
+    # прокси caddy из локалки по http и 8080 порту
+    uvicorn.run(app, host="127.0.0.1", port=8080)
