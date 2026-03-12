@@ -1,6 +1,7 @@
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, status, Request, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from datetime import datetime
 
 import sys
 import logging
@@ -140,9 +141,13 @@ app.mount("/admin-ui", StaticFiles(directory="frontend", html=True), name="admin
 
 # В FastApi нужен класс для описания структуры входящих данных.
 # ТСД отправляет зашифрованный в base64 plain text, который после расшифровки представляет из себя json-структуру.
-# Поэтому нужно описать класс, который ожидает строку (payload).
+# Схема для парсинга входящего JSON: {"payload": шифрострока}
 class ScanRequest(BaseModel):
     payload: str
+
+# Схема для парсинга входящего JSON: {"change": 1} или {"change": -1}
+class StockChange(BaseModel):
+    change: int
 
 ######################################### ШИФРАТОР И ДЕШИФРАТОР ДЛЯ ТСД ################################################
 def decrypt_payload(encrypted_b64: str):
@@ -264,7 +269,7 @@ async def process_scan(data: ScanRequest, request: Request):
 # Джокушка локера от любопытных глаз
 @app.get("/scan")
 async def trap_page():
-    return FileResponse("frontend/scan.html")
+    return FileResponse("frontend/html/scan.html")
 
 # Клиент при отправке get на сервак получает index.html вместе со скриптом app.js.
 # app.js выполняет get запрос к api-сервера /api/v1/cartridges 
@@ -276,7 +281,8 @@ async def get_inventory(request: Request):
         SELECT 
             c.id, 
             c.cartridge_name,
-            c.quantity, 
+            c.quantity,
+            c.last_update, 
             GROUP_CONCAT(DISTINCT b.barcode) as barcodes
         FROM cartridges c
         LEFT JOIN barcodes b ON c.id = b.cartridge_id
@@ -288,21 +294,86 @@ async def get_inventory(request: Request):
         {
             "id": r[0],
             "name": r[1],
-            "stock": r[2],
-            "barcodes": r[3].split(",") if r[3] else []
+            "quantity": r[2],
+            "last_update": r[3],
+            "barcodes": r[4].split(",") if r[4] else []
             
         } for r in rows
     ]
+
+@app.patch("/api/v1/cartridges/{cartridge_id}/stock")
+async def update_cartridge_stock(cartridge_id: int, payload: StockChange, request: Request):
+    # Собираем инфу о клиенте из request
+    client_host = request.client.host
+    user_agent = request.headers.get("User-Agent")
+    os_info = "Platform: Windows       " if "Windows" in user_agent else "Platform: Mobile/Other  "
+    client_info = os_info + client_host
+    # Дергаем "сохраненное" состояние подключения к базе
+    db = request.app.state.db
+    # Получаем текущее количество
+    async with db.execute(
+        "SELECT quantity FROM cartridges WHERE id = ?", 
+        (cartridge_id,)
+    ) as cursor:
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Картридж не найден!")
+        
+        current_stock = row[0]
     
+    # Вычисляем новый остаток и не даем ему уйти в минус
+    new_stock = current_stock + payload.change
+    if new_stock < 0:
+        new_stock = 0
+        logger.warning(f"{client_host}   - 'База не изменена, количество меньше нуля!'")
+        return {"new_stock": new_stock}
+    
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Обновляем таблицу cartridges
+    await db.execute(
+        "UPDATE cartridges SET quantity = ?, last_update = ? WHERE id = ?", 
+        (new_stock, current_time, cartridge_id)
+    )
+    
+    # Записываем действие в update_history для сохранения истории движения
+    # Структура полей может немного отличаться в зависимости от твоей схемы, 
+    # здесь пример записи ID картриджа, изменения и итогового остатка
+    async with db.execute(
+        "SELECT cartridge_name FROM cartridges WHERE id = ?", 
+        (cartridge_id,)
+    ) as cursor:
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Косяк!")
+        
+        cartridge_name = row[0]
+
+    await db.execute(
+        """
+        INSERT INTO history (cartridge_id, cartridge_name, delta, editor, created_at) 
+        VALUES (?, ?, ?, ?, ?)
+        """, 
+        (cartridge_id, cartridge_name, payload.change, client_info, current_time)
+    )
+    
+    # Подтверждаем транзакцию
+    await db.commit()
+
+    
+    logger.info(f"{client_host}   - 'Картридж {cartridge_name} изменен на {payload.change}. Новый остаток: {new_stock}'")
+    
+    # 5. Возвращаем клиенту обновленное значение
+    return {"new_stock": new_stock}
+
 # Перенаправление пользователя на файл админки    
 @app.get("/")
 async def root_redirect():
-    return RedirectResponse(url='/admin-ui/')
+    return RedirectResponse(url='/admin-ui/html')
 
 # Перенаправление пользователя на файл админки
 @app.get("/admin-ui")
 async def root_redirect():
-    return RedirectResponse(url='/admin-ui/')
+    return RedirectResponse(url='/admin-ui/html')
 
 
 ################################## ЗАПУСК UVICORN #############################################################
