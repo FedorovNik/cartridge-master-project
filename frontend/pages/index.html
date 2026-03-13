@@ -7,7 +7,16 @@
 </head>
 <body>
     <div class="container">
-        <h1>Список картриджей:</h1>
+        <h1>тест форма редактора бд</h1>
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                oninput="filterTable()" 
+                placeholder="Фильтр поиска по названию" 
+                class="search-box"
+            >
+        </div>
         <table id="inv-table">
             <thead>
                 <tr>
@@ -16,7 +25,7 @@
                     <th>Текущее количество</th>
                     <th>Минимально необходимо</th>
                     <th>Список штрих-кодов</th>
-                    <th>Дата последнего изменения</th>
+                    <th>Последнее изменение</th>
                 </tr>
             </thead>
             <tbody></tbody>

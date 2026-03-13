@@ -98,6 +98,7 @@ async def lifespan(app: FastAPI):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cartridge_name TEXT NOT NULL,
             quantity INTEGER DEFAULT 0,
+            min_qty INTEGER DEFAULT 0,
             last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -136,7 +137,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 # Монтажим папку с фронтом как /admin-ui
-app.mount("/admin-ui", StaticFiles(directory="frontend", html=True), name="admin-ui")
+app.mount("/admin-ui", StaticFiles(directory="frontend", html=True))
 
 
 # В FastApi нужен класс для описания структуры входящих данных.
@@ -269,19 +270,20 @@ async def process_scan(data: ScanRequest, request: Request):
 # Джокушка локера от любопытных глаз
 @app.get("/scan")
 async def trap_page():
-    return FileResponse("frontend/html/scan.html")
+    return FileResponse("frontend/pages/scan.html")
 
 # Клиент при отправке get на сервак получает index.html вместе со скриптом app.js.
 # app.js выполняет get запрос к api-сервера /api/v1/cartridges 
 @app.get("/api/v1/cartridges")
 async def get_inventory(request: Request):
     db = request.app.state.db
-    # Магия SQL: получаем имя, список штрихкодов через запятую и сумму остатков
+    # волшебный запрос к базе
     cursor = await db.execute("""
         SELECT 
             c.id, 
             c.cartridge_name,
             c.quantity,
+            c.min_qty,
             c.last_update, 
             GROUP_CONCAT(DISTINCT b.barcode) as barcodes
         FROM cartridges c
@@ -295,8 +297,9 @@ async def get_inventory(request: Request):
             "id": r[0],
             "name": r[1],
             "quantity": r[2],
-            "last_update": r[3],
-            "barcodes": r[4].split(",") if r[4] else []
+            "min_qty": r[3],
+            "last_update": r[4],
+            "barcodes": r[5].split(",") if r[4] else []
             
         } for r in rows
     ]
@@ -363,17 +366,20 @@ async def update_cartridge_stock(cartridge_id: int, payload: StockChange, reques
     logger.info(f"{client_host}   - 'Картридж {cartridge_name} изменен на {payload.change}. Новый остаток: {new_stock}'")
     
     # 5. Возвращаем клиенту обновленное значение
-    return {"new_stock": new_stock}
+    return {
+        "new_stock": new_stock,
+        "last_update": current_time
+    }
 
 # Перенаправление пользователя на файл админки    
 @app.get("/")
 async def root_redirect():
-    return RedirectResponse(url='/admin-ui/html')
+    return RedirectResponse(url='/admin-ui/pages/')
 
 # Перенаправление пользователя на файл админки
 @app.get("/admin-ui")
 async def root_redirect():
-    return RedirectResponse(url='/admin-ui/html')
+    return RedirectResponse(url='/admin-ui/pages/')
 
 
 ################################## ЗАПУСК UVICORN #############################################################
