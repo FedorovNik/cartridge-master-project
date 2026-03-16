@@ -24,8 +24,6 @@ body, html {
     border-radius: 8px; 
     /* Если панель прижата к левому краю, 
        логичнее скруглить только правые углы: */
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
     overflow: hidden; /* Чтобы фон внутренней шапки не вылезал за скругление */
 }
 
@@ -84,7 +82,26 @@ body, html {
     display: block;
 }
 
-/* Твои старые стили для таблиц и контейнеров остаются ниже... */
+
+/* Красная подсветка для малого количества */
+.low-stock {
+    color: #d9534f; /* Мягкий красный цвет */
+    font-weight: 800;
+    position: relative;
+}
+
+/* можно добавить иконку */
+.low-stock::after {
+    content: ' 👎';
+    font-size: 0.9em;
+}
+
+/* таблицы имеют разные ID в HTML */
+#inv-table, #editor-table {
+    width: 100%;
+    margin-bottom: 30px;
+}
+
 
 body { 
     font-family: sans-serif;

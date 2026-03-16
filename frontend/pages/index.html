@@ -21,11 +21,11 @@
 
         <main class="main-content">
             
-            <section id="section-list" class="content-section">
+            <section id="section-list" class="content-section active-section">
                 <div class="container">
                     <h1>Список расходников</h1>
                     <div class="search-container">
-                        <input type="text" id="searchInput" oninput="filterTable()" placeholder="Фильтр поиска по названию" class="search-box">
+                        <input type="text" id="searchInput-1" oninput="filterTable_list()" placeholder="Фильтр поиска по названию" class="search-box">
                     </div>
                     <table id="inv-table">
                         <thead>
@@ -47,7 +47,7 @@
                 <div class="container">
                     <h1>Редактор базы</h1>
                     <div class="search-container">
-                        <input type="text" id="searchInput" oninput="filterTable()" placeholder="Фильтр поиска по названию" class="search-box">
+                        <input type="text" id="searchInput-2" oninput="filterTable_edit()" placeholder="Фильтр поиска по названию" class="search-box">
                     </div>
                     <table id="editor-table">
                         <thead>

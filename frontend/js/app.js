@@ -1,4 +1,5 @@
 function showSection(sectionId, clickedBtn) {
+    updateDashboard();
     // Скрываем все секции
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(sec => sec.classList.remove('active-section'));
@@ -10,46 +11,11 @@ function showSection(sectionId, clickedBtn) {
     // Показываем нужную секцию
     document.getElementById(sectionId).classList.add('active-section');
 
-    // Делаем нажатую кнопку активной (синей)
+    // Делаем нажатую кнопку активной
     clickedBtn.classList.add('active');
+    
 }
 
-async function updateTable() {
-    const response = await fetch('/api/v1/cartridges');
-    const data = await response.json();
-    const tbody = document.querySelector('#inv-table tbody');
-    tbody.innerHTML = '';
-
-    data.forEach(item => {
-    const barcodes = item.barcodes.map(b => `<span class="barcode-badge">${b}</span>`).join('');
-    
-    // Передаем this в функцию changeQty.
-    // Это позволит функции понять какая именно кнопка была нажата.
-    const row = `<tr>
-        <td>${item.id}</td>
-        <td>${item.name}</td>
-        <td class="test">
-            <div class="qty-controls">
-                <button class="qty-btn" onclick="changeQty(this, ${item.id}, -1)">-</button>
-                <span class="qty-value">${item.quantity}</span>
-                <button class="qty-btn" onclick="changeQty(this, ${item.id}, 1)">+</button>
-            </div>
-        </td>
-
-        <td class="qty-min-require">
-        ${item.min_qty}
-        </td>
-
-        <td>${barcodes}</td>
-
-        <td>
-            <span class="timedate_value">${item.last_update}</span>
-        </td>
-    </tr>`;
-    
-    tbody.innerHTML += row; 
-});
-}
 async function changeQty(btn, cartridgeId, delta) {
     // Находим общую строку (tr), в которой находится нажатая кнопка
     const row = btn.closest('tr');
@@ -93,12 +59,36 @@ async function changeQty(btn, cartridgeId, delta) {
         btn.disabled = false;
     }
 }
-function filterTable() {
+function filterTable_list() {
     // Получаем то, что ввел пользователь, и переводим в нижний регистр
-    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const searchValue = document.getElementById('searchInput-1').value.toLowerCase();
     
     // Получаем все строки таблицы
     const rows = document.querySelectorAll('#inv-table tbody tr');
+
+    rows.forEach(row => {
+        // Берем конкретно вторую ячейку (td) в строке, где лежит имя
+        const nameCell = row.cells[1]; 
+        
+        // На всякий случай проверяем, есть ли ячейка чтобы не было ошибок на пустых строках
+        if (nameCell) {
+            // Берем текст только из ячейки с именем
+            const nameText = nameCell.textContent.toLowerCase();
+            if (nameText.includes(searchValue)) {
+                row.style.display = ''; 
+            } else {
+                row.style.display = 'none'; 
+            }
+        }
+    });
+}
+
+function filterTable_edit() {
+    // Получаем то, что ввел пользователь, и переводим в нижний регистр
+    const searchValue = document.getElementById('searchInput-2').value.toLowerCase();
+    
+    // Получаем все строки таблицы
+    const rows = document.querySelectorAll('#editor-table tbody tr');
 
     rows.forEach(row => {
         // Берем конкретно вторую ячейку (td) в строке, где лежит имя
@@ -185,5 +175,5 @@ function renderEditorList(data) {
 
 // Вызов при загрузке страницы
 window.onload = updateDashboard;
-//updateTable();
-//setInterval(updateTable, 5000);
+//updateDashboard();
+//setInterval(updateDashboard, 5000);
