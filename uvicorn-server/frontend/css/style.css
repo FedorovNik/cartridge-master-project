@@ -92,7 +92,7 @@ body, html {
 
 /* можно добавить иконку */
 .low-stock::after {
-    content: ' 👎';
+    content: '    -    скоро закупать';
     font-size: 0.9em;
 }
 
@@ -133,13 +133,78 @@ th {
     background: #333;
     color: white;
 }
+.barcode-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
 .barcode-badge {
     background: #eee;
     padding: 2px 6px;
     border-radius: 4px;
-    margin-right: 20px;
+    margin-right: 8px;
     font-size: 0.8em;
     font-weight: bold;
+    width: 115px;
+    display: inline-block;
+    text-align: center;
+}
+
+.remove-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remove-btn:hover {
+    background: #c82333;
+}
+
+.add-barcode {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+    gap: 8px;
+}
+
+.new-barcode-input {
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 113px;
+}
+
+.add-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.add-btn:hover {
+    background: #0056d6;
+}
+
+.add-btn:disabled, .remove-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 .qty-controls {
     display: inline-flex;
@@ -173,6 +238,47 @@ th {
     justify-content: center;
     align-items: center;
     transition: background-color 0.2s, border-color 0.2s;
+}
+
+.name-input {
+    width: 200px;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.qty-input {
+    width: 68px;
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    text-align: center;
+    -webkit-appearance: none; /* Убираем стрелочки в Chrome/Safari */
+    -moz-appearance: textfield; /* Убираем стрелочки в Firefox */
+}
+
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.save-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #007bff;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.save-btn:hover {
+    background: #0056d6;
+}
+
+.save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .btn-dark:hover {

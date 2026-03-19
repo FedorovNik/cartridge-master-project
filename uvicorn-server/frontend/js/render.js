@@ -40,18 +40,28 @@ function renderEditorList(data) {
 
     tbody.innerHTML = '';
     data.forEach(item => {
-        const row = `<tr>
+        const row = `<tr data-cartridge-id="${item.id}">
             <td>${item.id}</td>
-            <td>${item.name}</td>
+            <td><input type="text" class="name-input" value="${item.name}" /></td>
             <td>
                 <div class="qty-controls">
-                    <button class="qty-btn" onclick="changeQty(this, ${item.id}, -1)">-</button>
-                    <span class="qty-value">${item.quantity}</span>
-                    <button class="qty-btn" onclick="changeQty(this, ${item.id}, 1)">+</button>
+                    <button type="button" class="qty-btn" onclick="adjustNumber(this, -1)">-</button>
+                    <input type="number" min="0" class="qty-input current-qty" value="${item.quantity}" />
+                    <button type="button" class="qty-btn" onclick="adjustNumber(this, 1)">+</button>
                 </div>
             </td>
-            <td>${item.min_qty}</td>
-            <td>${item.barcodes.map(b => `<span class="barcode-badge">${b}</span>`).join('')}</td>
+            <td>
+                <div class="qty-controls">
+                    <button type="button" class="qty-btn" onclick="adjustNumber(this, -1)">-</button>
+                    <input type="number" min="0" class="qty-input min-qty" value="${item.min_qty}" />
+                    <button type="button" class="qty-btn" onclick="adjustNumber(this, 1)">+</button>
+                </div>
+            </td>
+            <td><button type="button" class="save-btn" onclick="saveRow(this)">Сохранить</button></td>
+            <td class="barcodes-cell" data-cartridge-id="${item.id}">
+                ${item.barcodes.map(b => `<div class="barcode-item"><span class="barcode-badge">${b}</span><button type="button" class="remove-btn" onclick="removeBarcode(this, '${b}')">-</button></div>`).join('')}
+                <div class="add-barcode"><input type="text" class="new-barcode-input" placeholder="Новый штрих-код"><button type="button" class="add-btn" onclick="addBarcode(this)">+</button></div>
+            </td>
             <td><span class="timedate_value">${item.last_update}</span></td>
         </tr>`;
         tbody.innerHTML += row;

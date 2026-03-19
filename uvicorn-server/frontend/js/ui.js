@@ -26,6 +26,25 @@ function showSection(sectionId, clickedBtn) {
 }
 
 /**
+ * Увеличивает/уменьшает значение в соседнем input[type=number] на 1
+ * @param {HTMLElement} btn - кнопка +/-
+ * @param {number} delta - изменение (+1 или -1)
+ */
+function adjustNumber(btn, delta) {
+    const wrapper = btn.closest('.qty-controls');
+    if (!wrapper) return;
+
+    const input = wrapper.querySelector('input[type="number"]');
+    if (!input) return;
+
+    const current = parseInt(input.value, 10);
+    if (Number.isNaN(current)) return;
+
+    const next = current + delta;
+    input.value = next < 0 ? 0 : next;
+}
+
+/**
  * Фильтрует таблицу "Список расходников" по названию
  * Вызывается при вводе текста в поле поиска
  */
@@ -70,8 +89,9 @@ function filterTable_edit() {
         
         // На всякий случай проверяем, есть ли ячейка чтобы не было ошибок на пустых строках
         if (nameCell) {
-            // Берем текст только из ячейки с именем
-            const nameText = nameCell.textContent.toLowerCase();
+            // Для редактора имя в input, берем value
+            const nameInput = nameCell.querySelector('input');
+            const nameText = nameInput ? nameInput.value.toLowerCase() : '';
             if (nameText.includes(searchValue)) {
                 row.style.display = ''; 
             } else {

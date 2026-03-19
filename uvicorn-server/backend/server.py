@@ -20,6 +20,7 @@ import logging
 import uvicorn, copy
 from uvicorn.logging import DefaultFormatter
 from pydantic import BaseModel
+from typing import Optional
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad, pad
@@ -140,9 +141,12 @@ app.mount("/admin-ui", StaticFiles(directory="frontend", html=True))
 class ScanRequest(BaseModel):
     payload: str
 
-# Схема для парсинга входящего JSON: {"change": 1} или {"change": -1}
+# Схема для парсинга входящего JSON: {"change": 1} или {"new_quantity": 10, "new_min_qty": 5}
 class StockChange(BaseModel):
-    change: int
+    change: Optional[int] = None
+    new_quantity: Optional[int] = None
+    new_min_qty: Optional[int] = None
+    new_name: Optional[str] = None
 
 ############################################### Блок шифрования ТСД #####################################################
 def decrypt_payload(encrypted_b64: str):
@@ -302,42 +306,102 @@ async def api_patch_cartridge_quantity(cartridge_id: int, payload: StockChange, 
     client_info = os_info + client_host
     # Дергаем "сохраненное" состояние подключения к базе
     db = request.app.state.db
-    
-    # Получаем текущее количество
-    current_stock = await get_cartridge_quantity(db, cartridge_id)
-    if current_stock is None:
+
+    # Получаем текущее количество и минимальное количество
+    cursor = await db.execute("SELECT quantity, min_qty FROM cartridges WHERE id = ?", (cartridge_id,))
+    row = await cursor.fetchone()
+    if not row:
         raise HTTPException(status_code=404, detail="Картридж не найден!")
-    
-    # Вычисляем новый остаток и не даем ему уйти в минус
-    new_stock = current_stock + payload.change
+
+    current_stock, current_min = row
+    new_name = current_name = await get_cartridge_name(db, cartridge_id) or ""
+
+    new_stock = current_stock
+    new_min = current_min
+
+    # Поддерживаем два вида payload:
+    # - {"change": 1} (старое поведение)
+    # - {"new_quantity": 10, "new_min_qty": 5, "new_name": "New Name"} (новое поведение)
+    if payload.change is not None:
+        new_stock = current_stock + payload.change
+
+    if payload.new_quantity is not None:
+        new_stock = payload.new_quantity
+
+    if payload.new_min_qty is not None:
+        new_min = payload.new_min_qty
+
+    if payload.new_name is not None:
+        new_name = payload.new_name.strip()
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Название не может быть пустым")
+
+    # Приводим минимальное значение к ненулевому диапазону
+    if new_min < 0:
+        new_min = 0
+
+    # Не даём остатку уйти в минус
     if new_stock < 0:
         new_stock = 0
         logger.warning(f"{client_host}   - 'База не изменена, количество меньше нуля!'")
-        return {"new_stock": new_stock}
-    
+        return {"new_stock": new_stock, "min_qty": new_min}
+
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+
     # Обновляем таблицу cartridges
-    await update_cartridge_quantity(db, cartridge_id, new_stock, current_time)
-    
-    # Получаем название картриджа
-    cartridge_name = await get_cartridge_name(db, cartridge_id)
-    if not cartridge_name:
-        raise HTTPException(status_code=404, detail="Косяк!")
-    
-    # Записываем действие в историю
-    await add_history_record(db, cartridge_id, cartridge_name, payload.change, client_info, current_time)
-    
+    await db.execute(
+        "UPDATE cartridges SET quantity = ?, min_qty = ?, cartridge_name = ?, last_update = ? WHERE id = ?",
+        (new_stock, new_min, new_name, current_time, cartridge_id)
+    )
+
+    # Записываем действие в историю, если изменилось количество
+    delta = new_stock - current_stock
+    if delta != 0:
+        await add_history_record(db, cartridge_id, new_name, delta, client_info, current_time)
+
     # Подтверждаем транзакцию
     await commit_changes(db)
-    
-    logger.info(f"{client_host}   - 'Картридж {cartridge_name} изменен на {payload.change}. Новый остаток: {new_stock}'")
-    
-    # Возвращаем клиенту обновленное значение
+
+    logger.info(f"{client_host}   - 'Картридж {cartridge_id} обновлён. Остаток: {new_stock}, min_qty: {new_min}, name: {new_name}'")
+
+    # Возвращаем клиенту обновлённые данные
     return {
         "new_stock": new_stock,
+        "min_qty": new_min,
         "last_update": current_time
     }
+
+@app.post("/api/v1/cartridges/{cartridge_id}/barcodes")
+async def api_add_barcode(cartridge_id: int, payload: dict, request: Request):
+    db = request.app.state.db
+    barcode = payload.get("barcode")
+    if not barcode:
+        raise HTTPException(status_code=400, detail="Штрих-код обязателен")
+    
+    # Проверить, существует ли картридж
+    cursor = await db.execute("SELECT id FROM cartridges WHERE id = ?", (cartridge_id,))
+    if not await cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Картридж не найден")
+    
+    # Проверить, не существует ли уже такой штрих-код
+    cursor = await db.execute("SELECT barcode FROM barcodes WHERE barcode = ?", (barcode,))
+    if await cursor.fetchone():
+        raise HTTPException(status_code=409, detail="Штрих-код уже существует")
+    
+    # Добавить
+    await db.execute("INSERT INTO barcodes (barcode, cartridge_id) VALUES (?, ?)", (barcode, cartridge_id))
+    await commit_changes(db)
+    return {"message": "Штрих-код добавлен"}
+
+@app.delete("/api/v1/cartridges/{cartridge_id}/barcodes/{barcode}")
+async def api_remove_barcode(cartridge_id: int, barcode: str, request: Request):
+    db = request.app.state.db
+    # Удалить, если существует
+    cursor = await db.execute("DELETE FROM barcodes WHERE barcode = ? AND cartridge_id = ?", (barcode, cartridge_id))
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Штрих-код не найден")
+    await commit_changes(db)
+    return {"message": "Штрих-код удалён"}
 
 # Перенаправление пользователя на файл админки    
 @app.get("/")
