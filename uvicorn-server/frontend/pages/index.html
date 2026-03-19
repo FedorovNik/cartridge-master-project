@@ -82,6 +82,10 @@
         </main>
     </div>
 
-    <script src="../js/app.js"></script>
+    <!-- модули скриптом для обмена с сервером -->
+    <script src="../js/render.js"></script>  <!-- Функции рендеринга -->
+    <script src="../js/ui.js"></script>       <!-- Функции UI/навигации -->
+    <script src="../js/api.js"></script>      <!-- API запросы (зависит от render.js) -->
+    <script src="../js/app.js"></script>      <!-- Инициализация (зависит от api.js) -->
 </body>
 </html>
