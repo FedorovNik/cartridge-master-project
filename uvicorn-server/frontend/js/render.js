@@ -13,20 +13,22 @@ function renderSimpleList(data) {
     
     tbody.innerHTML = '';
     data.forEach(item => {
-        // Проверка: если количество меньше минимума — добавляем класс 'low-stock'
-        const isLow = item.quantity < item.min_qty;
-        const qtyClass = isLow ? 'qty-value low-stock' : 'qty-value';
+        let qtyClass = 'qty-value';
+
+        if (item.quantity < item.min_qty) {
+            qtyClass += ' low-stock';
+        } else if (item.quantity === item.min_qty) {
+            qtyClass += ' equal-stock';
+        }
 
         const row = `<tr>
             <td>${item.id}</td>
             <td>${item.name}</td>
             <td><span class="${qtyClass}">${item.quantity}</span></td>
             <td>${item.min_qty}</td>
-            
             <td>${item.last_update}</td>
         </tr>`;
         tbody.innerHTML += row;
-        //<td>${item.barcodes.map(b => `<span class="barcode-badge">${b}</span>`).join('')}</td>
     });
 }
 

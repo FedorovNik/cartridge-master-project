@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Cartridge Master</title>
+    <link rel="icon" type="image/x-icon" href="../static/favicon.ico">
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
@@ -14,8 +15,8 @@
             <nav class="sidebar-nav">
                 <button class="nav-btn active" onclick="showSection('section-list', this)">Список расходников</button>
                 <button class="nav-btn" onclick="showSection('section-editor', this)">Редактор БД</button>
-                <button class="nav-btn" onclick="showSection('section-3', this)">Графики расходов</button>
-                <button class="nav-btn" onclick="showSection('section-4', this)">Пользователи</button>
+                <button class="nav-btn" onclick="showSection('section-users', this)">Пользователи</button>
+                <button class="nav-btn" onclick="showSection('section-analysis', this)">Анализ расходов</button>
             </nav>
         </aside>
 
@@ -66,16 +67,16 @@
                 </div>
             </section>
 
-            <section id="section-3" class="content-section">
+            <section id="section-users" class="content-section">
                 <div class="container">
                     <h1>Пользователи</h1>
                     <p>тест</p>
                 </div>
             </section>
 
-            <section id="section-4" class="content-section">
+            <section id="section-analysis" class="content-section">
                 <div class="container">
-                    <h1>Уведомления</h1>
+                    <h1>Анализ расходов</h1>
                     <p>тест</p>
                 </div>
             </section>
@@ -83,10 +84,10 @@
         </main>
     </div>
 
-    <!-- модули скриптом для обмена с сервером -->
-    <script src="../js/render.js"></script>  <!-- Функции рендеринга -->
-    <script src="../js/ui.js"></script>       <!-- Функции UI/навигации -->
-    <script src="../js/api.js"></script>      <!-- API запросы (зависит от render.js) -->
-    <script src="../js/app.js"></script>      <!-- Инициализация (зависит от api.js) -->
+    <!-- модули скриптоы для обмена  -->
+    <script src="../js/render.js"></script>
+    <script src="../js/ui.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>

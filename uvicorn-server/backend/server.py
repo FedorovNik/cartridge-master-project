@@ -275,11 +275,11 @@ async def apiprocess_scan(data: ScanRequest, request: Request):
         name, new_stock = result
 
         # Шифро-ответ ТСД: запрос обработан
-        return PlainTextResponse(encrypt_payload(f"Имя: {name}\nШтрих-код:{req_barcode}\nОстаток: {new_stock}"))
+        return PlainTextResponse(encrypt_payload(f"Имя: {name}\nШтрих-код:{req_barcode}\nОстаток: {new_stock}"), status_code=status.HTTP_200_OK)
 
     except Exception as e:
         # Шифро-ответ ТСД: непонятный косяк на сервере
-        return PlainTextResponse(encrypt_payload("Непредвиденная критическая ошибка сервера!"), status_code=500)
+        return PlainTextResponse(encrypt_payload("Непредвиденная критическая ошибка сервера!"), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 ############################################# API для браузеров #########################################################
 # Просто страничка для любопытных глаз

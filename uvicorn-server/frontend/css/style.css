@@ -89,10 +89,18 @@ body, html {
     font-weight: 800;
     position: relative;
 }
-
+.equal-stock {
+    color: #ff9900; /* Мягкий красный цвет */
+    font-weight: 800;
+    position: relative;
+}
 /* можно добавить иконку */
+.equal-stock::after {
+    content: ' - внимание!';
+    font-size: 0.9em;
+}
 .low-stock::after {
-    content: '    -    скоро закупать';
+    content: ' - к закупке!';
     font-size: 0.9em;
 }
 

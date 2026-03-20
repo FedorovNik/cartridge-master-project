@@ -7,4 +7,4 @@
 window.onload = updateDashboard;
 
 // для автообновления каждые 5 секунд:
-// setInterval(updateDashboard, 5000);
+//setInterval(updateDashboard, 5000);
