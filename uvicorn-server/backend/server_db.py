@@ -5,10 +5,9 @@
 
 import aiosqlite
 import logging
+from config import DB_NAME
 
 logger = logging.getLogger("my_custom_logger")
-
-DB_NAME = "inventory.db"
 
 
 ################################### Инициализация таблиц БД ########################################################
@@ -201,6 +200,54 @@ async def get_cartridge_quantity(db: aiosqlite.Connection, cartridge_id: int):
     ) as cursor:
         row = await cursor.fetchone()
         return row[0] if row else None
+
+
+async def get_cartridge_by_id(db: aiosqlite.Connection, cartridge_id: int):
+    """
+    Проверяет существование картриджа по его ID
+
+    Возвращает кортеж (id,) или None
+    """
+    cursor = await db.execute(
+        "SELECT id FROM cartridges WHERE id = ?", 
+        (cartridge_id,)
+    )
+    return await cursor.fetchone()
+
+
+async def get_cartridge_stock_and_min(db: aiosqlite.Connection, cartridge_id: int):
+    """
+    Получает quantity и min_qty для картриджа по ID
+    """
+    cursor = await db.execute(
+        "SELECT quantity, min_qty FROM cartridges WHERE id = ?", 
+        (cartridge_id,)
+    )
+    return await cursor.fetchone()
+
+
+async def update_cartridge_details(db: aiosqlite.Connection, cartridge_id: int, new_stock: int, new_min: int, new_name: str, timestamp: str):
+    """
+    Обновляет карточку картриджа по всем полям, используемым в API PATCH
+    """
+    await db.execute(
+        "UPDATE cartridges SET quantity = ?, min_qty = ?, cartridge_name = ?, last_update = ? WHERE id = ?",
+        (new_stock, new_min, new_name, timestamp, cartridge_id)
+    )
+
+
+async def barcode_exists(db: aiosqlite.Connection, barcode: str):
+    cursor = await db.execute("SELECT 1 FROM barcodes WHERE barcode = ?", (barcode,))
+    return (await cursor.fetchone()) is not None
+
+
+async def add_barcode(db: aiosqlite.Connection, barcode: str, cartridge_id: int):
+    await db.execute("INSERT INTO barcodes (barcode, cartridge_id) VALUES (?, ?)", (barcode, cartridge_id))
+
+
+async def remove_barcode(db: aiosqlite.Connection, barcode: str, cartridge_id: int):
+    cursor = await db.execute("DELETE FROM barcodes WHERE barcode = ? AND cartridge_id = ?", (barcode, cartridge_id))
+    return cursor.rowcount
 
 
 async def update_cartridge_quantity(db: aiosqlite.Connection, cartridge_id: int, new_quantity: int, timestamp: str):

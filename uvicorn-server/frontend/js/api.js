@@ -4,40 +4,53 @@
  */
 
 /**
- * Сохраняет изменения количества и минимального уровня для строки таблицы
+ * Сохраняет изменения количества, минимального уровня и имени для картриджа
  * @param {HTMLElement} btn - кнопка "Сохранить" в строке
  */
 async function saveRow(btn) {
+    // Находим строку таблицы
     const row = btn.closest('tr');
     if (!row) return;
 
+    // Получаем ID картриджа из data-атрибута
     const cartridgeId = row.dataset.cartridgeId;
+    if (!cartridgeId) return;
+
+    // Находим элементы ввода
     const nameInput = row.querySelector('.name-input');
     const qtyInput = row.querySelector('.current-qty');
     const minInput = row.querySelector('.min-qty');
     const timeElement = row.querySelector('.timedate_value');
 
-    if (!cartridgeId || !nameInput || !qtyInput || !minInput) return;
+    if (!nameInput || !qtyInput || !minInput) return;
 
+    // Получаем и валидируем значения
     const newName = nameInput.value.trim();
-    const rawQuantity = parseInt(qtyInput.value, 10);
-    const rawMin = parseInt(minInput.value, 10);
-    const newQuantity = Number.isFinite(rawQuantity) ? rawQuantity : 0;
-    const newMin = Number.isFinite(rawMin) ? rawMin : 0;
+    const newQuantity = parseInt(qtyInput.value, 10) || 0;
+    const newMin = parseInt(minInput.value, 10) || 0;
 
+    // Проверяем, что имя не пустое
     if (!newName) {
         alert('Название не может быть пустым!');
         return;
     }
 
+    // Отключаем кнопку, чтобы предотвратить повторные клики
     btn.disabled = true;
+
     try {
+        // Отправляем PATCH запрос на сервер с новыми значениями
+        // Эта строка отправляет объект с новыми quantity, min_qty и name для обновления на сервере
         const response = await fetch(`/api/v1/cartridges/${cartridgeId}/stock`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ new_quantity: newQuantity, new_min_qty: newMin, new_name: newName })
+            body: JSON.stringify({
+                new_quantity: newQuantity,
+                new_min_qty: newMin,
+                new_name: newName
+            })
         });
 
         if (!response.ok) {
@@ -46,8 +59,10 @@ async function saveRow(btn) {
             return;
         }
 
+        // Получаем обновленные данные от сервера
         const data = await response.json();
 
+        // Обновляем поля ввода актуальными значениями
         if (typeof data.new_stock === 'number') {
             qtyInput.value = data.new_stock;
         }
@@ -58,12 +73,13 @@ async function saveRow(btn) {
             timeElement.innerText = data.last_update;
         }
 
-        // Обновляем остальные таблицы (чтобы подсветка и т.п. были корректны)
+        // Обновляем всю таблицу для корректности подсветки и данных
         await updateDashboard();
     } catch (error) {
         console.error('Сетевая ошибка:', error);
         alert('Ошибка сети. Проверьте подключение и попробуйте ещё раз.');
     } finally {
+        // Включаем кнопку обратно
         btn.disabled = false;
     }
 }
