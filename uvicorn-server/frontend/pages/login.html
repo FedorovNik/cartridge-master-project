@@ -19,13 +19,16 @@
                     <h1>Cartridge Master</h1>
                     <p>Войдите в систему</p>
                 </div>
+                
             </div>
             
             <div class="auth-tabs">
                 <button type="button" class="tab-btn active" onclick="switchAuthTab('ldap')">Домен</button>
                 <button type="button" class="tab-btn" onclick="switchAuthTab('local')">Локально</button>
             </div>
-            
+            <div class="auth-text">
+                <p>Доменные и локальные сессии валидны одну неделю!</p>
+            </div>
             <form id="loginForm">
                 <input type="hidden" id="authType" name="auth_type" value="ldap">
                 

@@ -866,10 +866,15 @@ details[open] .editor-card-summary::after {
 .login-form .auth-tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     background: rgba(255, 255, 255, 0.08);
     padding: 6px;
     border-radius: 12px;
+}
+
+.login-form .auth-text p {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
 }
 
 .login-form .tab-btn {
