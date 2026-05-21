@@ -1,124 +1,104 @@
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 from config import SMTP_SERVER, SMTP_PORT, EMAIL_ADDRESS, EMAIL_PASSWORD
 
 logger = logging.getLogger("my_custom_logger")
 
-# Настройки почтового сервера теперь импортируются из config.py
 smtp_server = SMTP_SERVER
 smtp_port = SMTP_PORT
 email_address = EMAIL_ADDRESS
 email_password = EMAIL_PASSWORD
 
 
-def _send_email_sync(recipient, subject, body):
+def _send_email_sync(recipient, subject, html_body):
     """
-    Синхронная функция для отправки одного письма
+    Отправляет одиночное HTML-письмо без резервной текстовой версии
     """
     try:
         server = smtplib.SMTP_SSL(smtp_server, smtp_port)
         server.login(email_address, email_password)
         
-        message = MIMEMultipart()
+        message = EmailMessage()
         message["From"] = email_address
         message["To"] = recipient
         message["Subject"] = subject
-        message.attach(MIMEText(body, "html"))
         
-        text = message.as_string()
-        server.sendmail(email_address, recipient, text)
+        # Обязательные заголовки для корректного парсинга в GLPI
+        message["Date"] = formatdate(localtime=True)
+        message["Message-ID"] = make_msgid()
+        message['User-Agent'] = 'Mozilla Thunderbird'
+        
+        # Устанавливаем только HTML-контент, сохраняя читаемость (cte='8bit')
+        message.set_content(html_body, subtype='html', charset='utf-8', cte='8bit')
+        
+        server.send_message(message)
         server.quit()
-        
-        logger.info(f"'EMAIL: Уведомление отправлено на {recipient}'")
+        logger.info(f"MAILSERVICE  - 'OK - Уведомление успешно отправлено на {recipient}'")
         return True
     except Exception as e:
-        logger.error(f"'EMAIL: Ошибка при отправке на {recipient}: {e}'")
+        logger.error(f"MAILSERVICE  - 'ERR - Ошибка при отправке на {recipient}: {e}'")
         return False
 
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import logging
-
-logger = logging.getLogger(__name__)
-
 async def send_low_stock_notifications(emails: list, low_stock_cartridges: list):
     """
-    Отправляет уведомления о низком запасе картриджей на список email адресов
-    
-    Args:
-        emails: Список email адресов для отправки
-        low_stock_cartridges: Список картриджей с низким запасом
-        
-    Returns:
-        Количество успешно отправленных уведомлений
+    Отправляет HTML-уведомления о низком запасе картриджей с инлайновыми стилями.
+    Стили полностью перенесены из тега <style> внутрь элементов с добавлением !important.
     """
     if not emails or not low_stock_cartridges:
         return 0
     
-    # Формируем HTML-тело письма
+    # --- СБОРКА HTML С ИНЛАЙН-СТИЛЯМИ ---
     html_body = """
     <html>
-    <head>
-        <style>
-            body { font-family: Arial, sans-serif; color: #333333; }
-            .header { color: #2c3e50; }
-            table { border-collapse: collapse; width: 100%; max-width: 600px; margin-top: 15px; }
-            th, td { border: 1px solid #dddddd; padding: 10px; text-align: left; }
-            th { background-color: #f4f4f4; font-weight: bold; }
-            .qty-alert { color: #d9534f; font-weight: bold; }
-            .footer { margin-top: 25px; font-size: 0.85em; color: #777777; }
-        </style>
-    </head>
-    <body>
-        <h3 class="header">Список расходников для закупки:</h3>
-        <table>
+    <body style="font-family: Arial, sans-serif !important; color: #333333 !important;">
+        <h3 style="color: #2c3e50 !important; font-family: Arial, sans-serif !important; margin-bottom: 15px !important;">Список расходников:</h3>
+        
+        <table style="border-collapse: collapse !important; width: 100% !important; max-width: 600px !important; margin-top: 15px !important; font-family: Arial, sans-serif !important; border: 1px solid #dddddd !important;">
             <thead>
                 <tr>
-                    <th>Модель</th>
-                    <th>Текущее количество</th>
-                    <th>Необходимый минимум</th>
+                    <th style="border: 1px solid #dddddd !important; padding: 10px !important; background-color: #f4f4f4 !important; font-weight: bold !important; text-align: left !important; color: #333333 !important;">Модель</th>
+                    <th style="border: 1px solid #dddddd !important; padding: 10px !important; background-color: #f4f4f4 !important; font-weight: bold !important; text-align: left !important; color: #333333 !important;">Текущий запас</th>
+                    <th style="border: 1px solid #dddddd !important; padding: 10px !important; background-color: #f4f4f4 !important; font-weight: bold !important; text-align: left !important; color: #333333 !important;">Необходимый минимум</th>
                 </tr>
             </thead>
             <tbody>
     """
     
-    # Добавляем строки таблицы для каждого картриджа
     for cartridge in low_stock_cartridges:
         html_body += f"""
                 <tr>
-                    <td>{cartridge['name']}</td>
-                    <td class="qty-alert">{cartridge['quantity']}</td>
-                    <td>{cartridge['min_qty']}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: #ffffff !important;">{cartridge['name']}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #d9534f !important; font-weight: bold !important; background-color: #ffffff !important;">{cartridge['quantity']}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: #ffffff !important;">{cartridge['min_qty']}</td>
                 </tr>
         """
         
     html_body += """
             </tbody>
         </table>
-        <div class="footer">
-            <p>Это уведомление сформировано автоматически, не отвечайте на него =)</p>
+        <div style="margin-top: 25px !important; font-size: 0.85em !important; color: #777777 !important; font-family: Arial, sans-serif !important; border-top: 1px dashed #cccccc !important; padding-top: 5px !important; max-width: 600px !important;">
+            <p>Это автоматическое уведомление формируется если текущий запас хотя бы одного картриджа опускается строго ниже заданного для него минимума.</p>
+            <p></p>
         </div>
     </body>
     </html>
     """
     
-    subject = "CartridgeMaster: отчёт о состоянии расходных материалов"
+    subject = "CartridgeMaster: уведомление о закупке"
     sent_count = 0
     
     try:
-        # Используем ThreadPoolExecutor для запуска синхронного SMTP кода в отдельных потоках
         loop = asyncio.get_event_loop()
         executor = ThreadPoolExecutor(max_workers=5)
         
         tasks = []
         for recipient in emails:
-            # Передаем html_body вместо обычного текста
             task = loop.run_in_executor(executor, _send_email_sync, recipient, subject, html_body)
             tasks.append(task)
         
@@ -130,4 +110,3 @@ async def send_low_stock_notifications(emails: list, low_stock_cartridges: list)
         return 0
     
     return sent_count
-
