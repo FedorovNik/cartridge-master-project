@@ -580,7 +580,7 @@ async def get_low_stock_cartridges(db: aiosqlite.Connection):
     cursor = await db.execute("""
         SELECT id, cartridge_name, quantity, min_qty 
         FROM cartridges 
-        WHERE quantity < min_qty 
+        WHERE quantity <= min_qty 
         ORDER BY cartridge_name
     """)
     rows = await cursor.fetchall()

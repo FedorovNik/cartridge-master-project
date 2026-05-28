@@ -48,7 +48,7 @@ def _send_email_sync(recipient, subject, html_body):
 async def send_low_stock_notifications(emails: list, low_stock_cartridges: list):
     """
     Отправляет HTML-уведомления о низком запасе картриджей с инлайновыми стилями.
-    Стили полностью перенесены из тега <style> внутрь элементов с добавлением !important.
+    Стили динамически меняются в зависимости от уровня запаса.
     """
     if not emails or not low_stock_cartridges:
         return 0
@@ -57,7 +57,7 @@ async def send_low_stock_notifications(emails: list, low_stock_cartridges: list)
     html_body = """
     <html>
     <body style="font-family: Arial, sans-serif !important; color: #333333 !important;">
-        <h3 style="color: #2c3e50 !important; font-family: Arial, sans-serif !important; margin-bottom: 15px !important;">Список расходников:</h3>
+        <h3 style="color: #333333 !important; font-family: Arial, sans-serif !important; margin-bottom: 15px !important;">Список расходников</h3>
         
         <table style="border-collapse: collapse !important; width: 100% !important; max-width: 600px !important; margin-top: 15px !important; font-family: Arial, sans-serif !important; border: 1px solid #dddddd !important;">
             <thead>
@@ -71,11 +71,28 @@ async def send_low_stock_notifications(emails: list, low_stock_cartridges: list)
     """
     
     for cartridge in low_stock_cartridges:
+        qty = cartridge['quantity']
+        min_qty = cartridge['min_qty']
+        
+        # Определяем цвета в зависимости от условий
+        if qty < min_qty:
+            # Строго ниже минимума — красный цвет (текст #d9534f)
+            qty_color = "#d9534f"
+            bg_color = "#ffffff"
+        elif qty == min_qty:
+            # Равно минимуму — желтый/оранжевый цвет для читаемости на белом фоне (#f0ad4e)
+            qty_color = "#f0ad4e" 
+            bg_color = "#ffffff"
+        else:
+            # Выше минимума (на случай, если в список попадут другие картриджи) — обычный цвет
+            qty_color = "#333333"
+            bg_color = "#ffffff"
+
         html_body += f"""
                 <tr>
-                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: #ffffff !important;">{cartridge['name']}</td>
-                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #d9534f !important; font-weight: bold !important; background-color: #ffffff !important;">{cartridge['quantity']}</td>
-                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: #ffffff !important;">{cartridge['min_qty']}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: {bg_color} !important;">{cartridge['name']}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: {qty_color} !important; font-weight: bold !important; background-color: {bg_color} !important;">{qty}</td>
+                    <td style="border: 1px solid #dddddd !important; padding: 10px !important; text-align: left !important; color: #333333 !important; background-color: {bg_color} !important;">{min_qty}</td>
                 </tr>
         """
         
@@ -83,14 +100,13 @@ async def send_low_stock_notifications(emails: list, low_stock_cartridges: list)
             </tbody>
         </table>
         <div style="margin-top: 25px !important; font-size: 0.85em !important; color: #777777 !important; font-family: Arial, sans-serif !important; border-top: 1px dashed #cccccc !important; padding-top: 5px !important; max-width: 600px !important;">
-            <p>Это автоматическое уведомление формируется если текущий запас хотя бы одного картриджа опускается строго ниже заданного для него минимума.</p>
-            <p></p>
+            <p>Это автоматическое уведомление формируется, если текущий запас картриджей равен минимальному или опустился ниже него.</p>
         </div>
     </body>
     </html>
     """
     
-    subject = "CartridgeMaster: уведомление о закупке"
+    subject = "CartridgeMaster - Уведомление о закупке"
     sent_count = 0
     
     try:
