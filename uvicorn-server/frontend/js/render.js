@@ -204,11 +204,15 @@ function renderSimpleList(data) {
 
                 <div class="card-metrics">
                     <div class="metric">
-                        <span class="metric-label">Необходимый минимум</span>
+                        <span class="metric-label">Минимум:</span>
                         <span class="metric-value">${item.min_qty} шт</span>
                     </div>
                     <div class="metric">
-                        <span class="metric-label">Последнее обновление</span>
+                        <span class="metric-label">Резерв в НЗ:</span>
+                        <span class="metric-value">${item.quantity_reserve || 0} шт</span>
+                    </div>
+                    <div class="metric metric-span-2">
+                        <span class="metric-label">Последнее обновление:</span>
                         <span class="metric-value">${escapeHtml(item.last_update || '—')}</span>
                     </div>
                 </div>
@@ -252,17 +256,9 @@ function renderEditorList(data) {
                     </div>
 
                     <div class="card-metrics compact-metrics">
-                        <div class="metric">
-                            <span class="metric-label">Количество</span>
-                            <span class="metric-value">${item.quantity} шт</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-label">Изменено</span>
-                            <span class="metric-value">${escapeHtml(item.last_update || '—')}</span>
-                        </div>
                     </div>
 
-                    <div class="editor-hint">Нажми на меня</div>
+                    <div class="editor-hint">Развернуть</div>
                 </summary>
 
                 <!-- Нижняя скрытая часть карточки: поля редактирования -->
@@ -287,6 +283,15 @@ function renderEditorList(data) {
                             <div class="qty-controls">
                                 <button type="button" class="qty-btn" onclick="adjustNumber(this, -1)">-</button>
                                 <input type="number" min="0" class="qty-input min-qty" value="${item.min_qty}" />
+                                <button type="button" class="qty-btn" onclick="adjustNumber(this, 1)">+</button>
+                            </div>
+                        </label>
+
+                        <label class="editor-field">
+                            <span>Резерв (НЗ)</span>
+                            <div class="qty-controls">
+                                <button type="button" class="qty-btn" onclick="adjustNumber(this, -1)">-</button>
+                                <input type="number" min="0" class="qty-input reserve-qty" value="${item.quantity_reserve || 0}" />
                                 <button type="button" class="qty-btn" onclick="adjustNumber(this, 1)">+</button>
                             </div>
                         </label>
@@ -351,6 +356,10 @@ function renderDeleteList(data) {
                     <div class="metric">
                         <span class="metric-label">Минимум</span>
                         <span class="metric-value">${item.min_qty} шт</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Резерв (НЗ)</span>
+                        <span class="metric-value">${item.quantity_reserve || 0} шт</span>
                     </div>
                     <div class="metric">
                         <span class="metric-label">Штрих-коды</span>

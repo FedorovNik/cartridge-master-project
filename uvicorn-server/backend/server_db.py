@@ -29,8 +29,14 @@ async def init_database(db_connection):
                 cartridge_name TEXT NOT NULL,
                 quantity INTEGER DEFAULT 0,
                 min_qty INTEGER DEFAULT 0,
+                quantity_reserve INTEGER DEFAULT 0,
                 last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        """)
+        
+        # Таблица штрихкодов
+        await db_connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cartridge_id ON barcodes(cartridge_id);
         """)
         
         # Таблица штрихкодов
@@ -61,6 +67,12 @@ async def init_database(db_connection):
             await db_connection.execute("ALTER TABLE history ADD COLUMN username TEXT")
         except:
             pass  # Колонка уже существует
+
+        # Добавляем колонку quantity_reserve если её еще нет (для существующих БД)
+        try:
+            await db_connection.execute("ALTER TABLE cartridges ADD COLUMN quantity_reserve INTEGER DEFAULT 0")
+        except:
+            pass # Колонка уже существует
         
         # Таблица сессий
         await db_connection.execute("""
@@ -198,10 +210,12 @@ async def get_all_cartridges(db: aiosqlite.Connection):
             c.quantity,
             c.min_qty,
             c.last_update, 
-            GROUP_CONCAT(DISTINCT b.barcode) as barcodes
+            GROUP_CONCAT(DISTINCT b.barcode) as barcodes,
+            c.quantity_reserve
         FROM cartridges c
         LEFT JOIN barcodes b ON c.id = b.cartridge_id
         GROUP BY c.id
+        ORDER BY c.cartridge_name COLLATE NOCASE ASC
     """)
     rows = await cursor.fetchall()
     # Возвращаем список из словарей (JSON)
@@ -212,7 +226,8 @@ async def get_all_cartridges(db: aiosqlite.Connection):
             "quantity": r[2],
             "min_qty": r[3],
             "last_update": r[4],
-            "barcodes": r[5].split(",") if r[5] else []
+            "barcodes": r[5].split(",") if r[5] else [],
+            "quantity_reserve": r[6] if r[6] is not None else 0
         } for r in rows
     ]
 
@@ -251,22 +266,22 @@ async def get_cartridge_by_id(db: aiosqlite.Connection, cartridge_id: int):
 
 async def get_cartridge_stock_and_min(db: aiosqlite.Connection, cartridge_id: int):
     """
-    Получает quantity и min_qty для картриджа по ID
+    Получает quantity, min_qty и quantity_reserve для картриджа по ID
     """
     cursor = await db.execute(
-        "SELECT quantity, min_qty FROM cartridges WHERE id = ?", 
+        "SELECT quantity, min_qty, quantity_reserve FROM cartridges WHERE id = ?", 
         (cartridge_id,)
     )
     return await cursor.fetchone()
 
 
-async def update_cartridge_details(db: aiosqlite.Connection, cartridge_id: int, new_stock: int, new_min: int, new_name: str, timestamp: str):
+async def update_cartridge_details(db: aiosqlite.Connection, cartridge_id: int, new_stock: int, new_min: int, new_name: str, new_reserve: int, timestamp: str):
     """
     Обновляет карточку картриджа по всем полям, используемым в API PATCH
     """
     await db.execute(
-        "UPDATE cartridges SET quantity = ?, min_qty = ?, cartridge_name = ?, last_update = ? WHERE id = ?",
-        (new_stock, new_min, new_name, timestamp, cartridge_id)
+        "UPDATE cartridges SET quantity = ?, min_qty = ?, cartridge_name = ?, quantity_reserve = ?, last_update = ? WHERE id = ?",
+        (new_stock, new_min, new_name, new_reserve, timestamp, cartridge_id)
     )
 
 
@@ -724,7 +739,7 @@ async def set_notifications_enabled(db: aiosqlite.Connection, enabled: bool):
 ################################### Функции для создания и удаления картриджей ###################################################
 
 async def create_cartridge(db: aiosqlite.Connection, cartridge_name: str, quantity: int, 
-                          min_qty: int, barcode: str, timestamp: str) -> int:
+                          min_qty: int, quantity_reserve: int, barcode: str, timestamp: str) -> int:
     """
     Создает новый картридж и добавляет первый штрих-код
     
@@ -734,6 +749,7 @@ async def create_cartridge(db: aiosqlite.Connection, cartridge_name: str, quanti
         quantity: Начальное количество
         min_qty: Минимальный остаток
         barcode: Первый штрих-код (обязателен)
+        quantity_reserve: Резервное количество
         timestamp: Время создания
         
     Returns:
@@ -741,10 +757,10 @@ async def create_cartridge(db: aiosqlite.Connection, cartridge_name: str, quanti
     """
     cursor = await db.execute(
         """
-        INSERT INTO cartridges (cartridge_name, quantity, min_qty, last_update) 
-        VALUES (?, ?, ?, ?)
+        INSERT INTO cartridges (cartridge_name, quantity, min_qty, quantity_reserve, last_update) 
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (cartridge_name, quantity, min_qty, timestamp)
+        (cartridge_name, quantity, min_qty, quantity_reserve, timestamp)
     )
     cartridge_id = cursor.lastrowid
     

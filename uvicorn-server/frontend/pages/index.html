@@ -73,21 +73,29 @@
                     <h1>Добавление позиций</h1>
                     <p class="page-intro">Раздел для добавления новых позиций в базу.</p>
                     <div class="add-cartridge-form">
-                        <div class="form-group">
-                            <label for="addCartridgeName">Название картриджа:</label>
-                            <input type="text" id="addCartridgeName" placeholder="Например: HP LaserJet Q2612A" class="form-control">
+                        <div class="form-column form-column-left">
+                            <div class="form-group">
+                                <label for="addCartridgeName">Название картриджа:</label>
+                                <input type="text" id="addCartridgeName" placeholder="Cactus 228X" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="addCartridgeBarcode">Штрих-код (обязателен, 13 цифр):</label>
+                                <input type="text" id="addCartridgeBarcode" placeholder="0000000000000" class="form-control">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="addCartridgeQuantity">Количество:</label>
-                            <input type="number" id="addCartridgeQuantity" min="0" value="0" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="addCartridgeMinQty">Минимальный остаток:</label>
-                            <input type="number" id="addCartridgeMinQty" min="1" value="1" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="addCartridgeBarcode">Штрих-код (обязателен, 13 цифр):</label>
-                            <input type="text" id="addCartridgeBarcode" placeholder="0000000000000" class="form-control">
+                        <div class="form-column form-column-right">
+                            <div class="form-group">
+                                <label for="addCartridgeQuantity">Количество:</label>
+                                <input type="number" id="addCartridgeQuantity" min="0" value="0" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="addCartridgeMinQty">Минимальный остаток:</label>
+                                <input type="number" id="addCartridgeMinQty" min="1" value="1" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="addCartridgeReserveQuantity">Резервное количество (НЗ):</label>
+                                <input type="number" id="addCartridgeReserveQuantity" min="0" value="0" class="form-control">
+                            </div>
                         </div>
                         <button type="button" class="save-btn" onclick="addNewCartridge()">Добавить картридж</button>
                     </div>

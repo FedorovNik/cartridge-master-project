@@ -17,13 +17,15 @@ async function saveRow(btn) {
     const nameInput = card.querySelector('.name-input');
     const qtyInput = card.querySelector('.current-qty');
     const minInput = card.querySelector('.min-qty');
+    const reserveInput = card.querySelector('.reserve-qty');
     const timeElement = card.querySelector('.timedate_value');
 
-    if (!nameInput || !qtyInput || !minInput) return;
+    if (!nameInput || !qtyInput || !minInput || !reserveInput) return;
 
     const newName = nameInput.value.trim();
     const newQuantity = parseInt(qtyInput.value, 10) || 0;
     const newMin = parseInt(minInput.value, 10) || 0;
+    const newReserve = parseInt(reserveInput.value, 10) || 0;
 
     if (!newName) {
         alert('Название не может быть пустым!');
@@ -41,7 +43,8 @@ async function saveRow(btn) {
             body: JSON.stringify({
                 new_quantity: newQuantity,
                 new_min_qty: newMin,
-                new_name: newName
+                new_name: newName,
+                new_quantity_reserve: newReserve
             })
         });
 
@@ -58,6 +61,9 @@ async function saveRow(btn) {
         }
         if (typeof data.min_qty === 'number') {
             minInput.value = data.min_qty;
+        }
+        if (typeof data.new_quantity_reserve === 'number') {
+            reserveInput.value = data.new_quantity_reserve;
         }
         if (data.last_update && timeElement) {
             timeElement.innerText = data.last_update;
@@ -571,9 +577,10 @@ async function addNewCartridge() {
     const nameInput = document.getElementById('addCartridgeName');
     const qtyInput = document.getElementById('addCartridgeQuantity');
     const minQtyInput = document.getElementById('addCartridgeMinQty');
+    const reserveQtyInput = document.getElementById('addCartridgeReserveQuantity');
     const barcodeInput = document.getElementById('addCartridgeBarcode');
 
-    if (!nameInput || !qtyInput || !minQtyInput || !barcodeInput) {
+    if (!nameInput || !qtyInput || !minQtyInput || !reserveQtyInput || !barcodeInput) {
         alert('Не удалось найти поля формы');
         return;
     }
@@ -581,11 +588,17 @@ async function addNewCartridge() {
     const name = nameInput.value.trim();
     const quantity = parseInt(qtyInput.value, 10) || 0;
     const minQty = parseInt(minQtyInput.value, 10) || 1;
+    const reserveQty = parseInt(reserveQtyInput.value, 10) || 0;
     const barcode = barcodeInput.value.trim();
 
     // Валидация
     if (!name) {
         alert('Введите название картриджа');
+        return;
+    }
+
+    if (reserveQty < 0) {
+        alert('Резервное количество не может быть отрицательным');
         return;
     }
 
@@ -619,6 +632,7 @@ async function addNewCartridge() {
                 cartridge_name: name,
                 quantity: quantity,
                 min_qty: minQty,
+                quantity_reserve: reserveQty,
                 barcode: barcode
             })
         });
@@ -635,6 +649,7 @@ async function addNewCartridge() {
         nameInput.value = '';
         qtyInput.value = '0';
         minQtyInput.value = '1';
+        reserveQtyInput.value = '0';
         barcodeInput.value = '';
 
         alert('Картридж успешно добавлен');

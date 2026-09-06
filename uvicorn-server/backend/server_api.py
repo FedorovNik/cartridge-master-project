@@ -241,12 +241,14 @@ class ScanRequest(BaseModel):
 class StockChange(BaseModel):
     new_quantity: Optional[int] = None
     new_min_qty: Optional[int] = None
+    new_quantity_reserve: Optional[int] = None
     new_name: Optional[str] = None
 
 # Схема для создания нового картриджа
 class CartridgeCreateRequest(BaseModel):
     cartridge_name: str
     quantity: int
+    quantity_reserve: int
     min_qty: int
     barcode: str
 
@@ -457,15 +459,19 @@ async def api_patch_cartridge_quantity(cartridge_id: int, payload: StockChange, 
     if not row:
         raise HTTPException(status_code=404, detail="Картридж не найден!")
 
-    current_stock, current_min = row
+    current_stock, current_min, current_reserve = row
     new_name = await get_cartridge_name(db, cartridge_id) or ""
 
     new_stock = current_stock
     new_min = current_min
+    new_reserve = current_reserve
 
     # Обновляем поля на основе payload
     if payload.new_quantity is not None:
         new_stock = payload.new_quantity
+
+    if payload.new_quantity_reserve is not None:
+        new_reserve = payload.new_quantity_reserve
 
     if payload.new_min_qty is not None:
         new_min = payload.new_min_qty
@@ -478,17 +484,20 @@ async def api_patch_cartridge_quantity(cartridge_id: int, payload: StockChange, 
     # Приводим минимальное значение к ненулевому диапазону
     if new_min < 0:
         new_min = 0
+    
+    if new_reserve < 0:
+        new_reserve = 0
 
     # Не даём остатку уйти в минус
     if new_stock < 0:
         new_stock = 0
         logger.warning(f"{client_host}   - 'База не изменена, количество меньше нуля!'")
-        return {"new_stock": new_stock, "min_qty": new_min}
+        return {"new_stock": new_stock, "min_qty": new_min, "new_quantity_reserve": new_reserve}
 
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Обновляем таблицу cartridges
-    await update_cartridge_details(db, cartridge_id, new_stock, new_min, new_name, current_time)
+    await update_cartridge_details(db, cartridge_id, new_stock, new_min, new_name, new_reserve, current_time)
 
     # Записываем действие в историю, если изменилось количество
     delta = new_stock - current_stock
@@ -498,12 +507,13 @@ async def api_patch_cartridge_quantity(cartridge_id: int, payload: StockChange, 
     # Подтверждаем транзакцию
     await commit_changes(db)
 
-    logger.info(f"{client_host}   - 'ID: {cartridge_id} | Имя: {new_name} | Дельта: {delta} | Кол-во: {new_stock} | Минимум: {new_min}'")
+    logger.info(f"{client_host}   - 'ID: {cartridge_id} | Имя: {new_name} | Дельта: {delta} | Кол-во: {new_stock} | Минимум: {new_min} | Резерв: {new_reserve}'")
 
     # Возвращаем клиенту обновлённые данные
     return {
         "new_stock": new_stock,
         "min_qty": new_min,
+        "new_quantity_reserve": new_reserve,
         "last_update": current_time
     }
 
@@ -787,6 +797,9 @@ async def api_create_cartridge(payload: CartridgeCreateRequest, request: Request
     if payload.min_qty < 1:
         raise HTTPException(status_code=400, detail="Минимальный остаток должен быть не менее 1")
     
+    if payload.quantity_reserve < 0:
+        raise HTTPException(status_code=400, detail="Резервное количество не может быть отрицательным")
+    
     # Проверка на дубль штрих-кода
     if await barcode_exists(db, payload.barcode):
         raise HTTPException(status_code=409, detail="Штрих-код уже существует в базе")
@@ -813,6 +826,7 @@ async def api_create_cartridge(payload: CartridgeCreateRequest, request: Request
             payload.cartridge_name.strip(),
             max(0, payload.quantity),
             payload.min_qty,
+            payload.quantity_reserve,
             payload.barcode,
             current_time
         )
@@ -836,7 +850,7 @@ async def api_create_cartridge(payload: CartridgeCreateRequest, request: Request
         
         await commit_changes(db)
         
-        logger.info(f"{client_host} - 'Создан картридж ID: {cartridge_id} | Имя: {payload.cartridge_name} | Кол-во: {max(0, payload.quantity)}'")
+        logger.info(f"{client_host} - 'Создан картридж ID: {cartridge_id} | Имя: {payload.cartridge_name} | Кол-во: {max(0, payload.quantity)} | Резерв: {payload.quantity_reserve}'")
         
         return {
             "id": cartridge_id,
