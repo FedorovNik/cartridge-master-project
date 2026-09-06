@@ -1,4 +1,5 @@
 :root {
+    --sidebar-width: 320px;
     --bg: #eef3f9;
     --panel: #ffffff;
     --panel-soft: #f8fbff;
@@ -57,6 +58,56 @@ body {
     border-radius: 0px;
     overflow: hidden;
     box-shadow: none;
+    transition: margin-left 0.24s ease, transform 0.24s ease;
+}
+
+.sidebar-brand-text {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.sidebar-toggle-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0;
+    background: #213243;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-toggle-btn {
+    width: 84px;
+    height: 30px;
+    flex: 0 0 84px;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+}
+
+.sidebar-toggle-btn span {
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.main-sidebar-control {
+    display: flex;
+    justify-content: flex-start;
+    padding: 8px 22px;
+    background: #213243;
+}
+
+body.sidebar-collapsed .sidebar {
+    margin-left: calc(var(--sidebar-width) * -1);
 }
 
 .sidebar-header {
@@ -711,13 +762,21 @@ details[open] .editor-card-summary::after {
     }
 
     .sidebar {
+        flex: 0 0 auto;
         width: 100%;
         min-width: 100%;
         max-width: 100%;
+        min-height: auto;
+        height: auto;
         border-radius: 0px;
     }
 
+    body.sidebar-collapsed .sidebar {
+        display: none;
+    }
+
     .sidebar-nav {
+        flex: 0 0 auto;
         flex-direction: row;
         flex-wrap: wrap;
     }
@@ -728,6 +787,8 @@ details[open] .editor-card-summary::after {
     }
 
     .main-content {
+        flex: 0 0 auto;
+        width: 100%;
         height: auto;
         overflow-y: visible;
         overflow-x: hidden;
@@ -828,8 +889,8 @@ details[open] .editor-card-summary::after {
 .login-brand-text h1,
 .sidebar-brand-text h2 {
     margin: 0;
-    font-size: 1.8rem;
-    line-height: 1.1;
+    font-size: 1.1rem;
+    line-height: 1.2;
 }
 
 .login-brand-text p,
