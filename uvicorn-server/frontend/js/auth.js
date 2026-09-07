@@ -17,11 +17,11 @@ async function checkAuth() {
             }
             return;
         }
-        // Получаем имя пользователя из ответа и отображаем его в сайдбаре
+        // Получаем имя пользователя и отображаем его в верхней панели
         const data = await response.json();
         //const username = data.user_dn ? data.user_dn.split('@')[0] : '';
         const username = data.user_dn || '';
-        const userElement = document.getElementById('sidebarUsername');
+        const userElement = document.getElementById('mainUsername');
         if (userElement) {
             userElement.textContent = username || 'Неизвестен';
         }

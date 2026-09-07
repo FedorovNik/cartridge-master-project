@@ -16,40 +16,28 @@
         <p>Проверка доступа...</p>
     </div>
     <div class="app-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-brand">
-                    <img src="../static/billy.png" alt="Billy" class="sidebar-avatar">
-                    <div class="sidebar-brand-text">
-                        <h2>Cartridge Master</h2>
-                        <p>Учет картриджей и быстрый контроль остатков</p>
-                    </div>
-                </div>
-                <div class="sidebar-user-info">
-                    <span class="sidebar-user-label">Пользователь</span>
-                    <span id="sidebarUsername" class="sidebar-username">...</span>
-                </div>
-            </div>
-            <nav class="sidebar-nav">
-                <button class="nav-btn active" onclick="showSection('section-list', this)">Список расходников</button>
-                <button class="nav-btn" onclick="showSection('section-editor', this)">Редактор позиций</button>
-                <button class="nav-btn" onclick="showSection('section-add', this)">Добавление позиций</button>
-                <button class="nav-btn" onclick="showSection('section-delete', this)">Удаление позиций</button>
-                <button class="nav-btn" onclick="showSection('section-post', this)">Почтовые смски</button>
-                <button class="nav-btn" onclick="showSection('section-analysis', this)">Анализ расходов</button>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="logout-btn" onclick="logout()">Выйти</button>
-            </div>
-        </aside>
-
         <main class="main-content">
             <div class="main-sidebar-control">
-                <button type="button" id="sidebarCloseButton" class="sidebar-toggle-btn" aria-label="Скрыть боковую панель" aria-expanded="true" title="Скрыть боковую панель">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <div class="main-brand">
+                    <img src="../static/billy.png" alt="Billy" class="main-brand-avatar">
+                    <div class="main-brand-text">
+                        <strong>Cartridge Master</strong>
+                        <span>Простая система учета картриджей</span>
+                    </div>
+                </div>
+                <nav class="main-nav" aria-label="Основная навигация">
+                    <button class="nav-btn active" onclick="showSection('section-list', this)">Список расходников</button>
+                    <button class="nav-btn" onclick="showSection('section-editor', this)">Редактор позиций</button>
+                    <button class="nav-btn" onclick="showSection('section-add', this)">Добавление позиций</button>
+                    <button class="nav-btn" onclick="showSection('section-delete', this)">Удаление позиций</button>
+                    <button class="nav-btn" onclick="showSection('section-post', this)">Почтовые смски</button>
+                    <button class="nav-btn" onclick="showSection('section-analysis', this)">Анализ расходов</button>
+                </nav>
+                <div class="main-account">
+                    <span class="main-user-label">Пользователь</span>
+                    <span id="mainUsername" class="main-username">...</span>
+                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                </div>
             </div>
             <section id="section-list" class="content-section active-section">
                 <div class="container">

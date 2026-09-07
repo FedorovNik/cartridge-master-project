@@ -3,30 +3,6 @@
  * Функции для управления пользовательским интерфейсом (навигация, фильтрация)
  */
 
-function setSidebarCollapsed(isCollapsed) {
-    document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-
-    const sidebarButton = document.getElementById('sidebarCloseButton');
-    if (sidebarButton) {
-        sidebarButton.setAttribute('aria-expanded', String(!isCollapsed));
-        sidebarButton.setAttribute('aria-label', isCollapsed ? 'Открыть боковую панель' : 'Скрыть боковую панель');
-        sidebarButton.setAttribute('title', isCollapsed ? 'Открыть боковую панель' : 'Скрыть боковую панель');
-    }
-}
-
-function initializeSidebarControls() {
-    const sidebarButton = document.getElementById('sidebarCloseButton');
-
-    if (sidebarButton) {
-        sidebarButton.addEventListener('click', () => {
-            const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-            setSidebarCollapsed(!isCollapsed);
-        });
-    }
-}
-
-initializeSidebarControls();
-
 /**
  * Показывает нужную секцию и обновляет активное меню
  * @param {string} sectionId - ID секции для отображения

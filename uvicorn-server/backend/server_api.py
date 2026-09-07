@@ -207,7 +207,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Соединение с БД закрыто.")
 
 ############################################# FastAPI, объект app #######################################################
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 # Middleware для проверки сессий
 @app.middleware("http")
