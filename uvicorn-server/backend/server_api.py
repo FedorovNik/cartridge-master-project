@@ -27,10 +27,13 @@ from server_cipher import decrypt_payload, encrypt_payload
 from server_db import (
     init_database,
     get_cartridge_by_barcode,
+    get_cartridge_barcodes,
     get_cartridge_name_and_quantity,
+    get_cartridge_info,
     get_cartridge_name,
     update_cartridge_quantity_add,
     update_cartridge_quantity_subtract,
+    update_cartridge_timestamp,
     get_all_cartridges,
     get_cartridge_quantity,
     update_cartridge_quantity,
@@ -375,11 +378,39 @@ async def apiprocess_scan(data: ScanRequest, request: Request):
         row = await get_cartridge_by_barcode(db, req_barcode)
         if not row:
             # Устанавливаем код 404 (Not Found)
-            msg = f"Штрихкод {req_barcode} не привязан!"
+            msg = f"Абракадабра, абра-у-на-на!\nТакого штрих-кода нет в базе:\n{req_barcode}"
+
             return PlainTextResponse(encrypt_payload(msg), status_code=status.HTTP_404_NOT_FOUND)
 
         # Берем id по этому штрихкоду
         cartridge_id = row[0]
+
+        if req_action == 'getinfo':
+            info = await get_cartridge_info(db, cartridge_id)
+            if not info:
+                return PlainTextResponse(
+                    encrypt_payload(f"Картридж для штрихкода {req_barcode} не найден!"),
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+
+            _, name, quantity, min_qty, last_update, quantity_reserve = info
+            barcodes = await get_cartridge_barcodes(db, cartridge_id)
+            barcode_lines = "\n".join(f"Штрих-код: {barcode}" for barcode in barcodes)
+            message = (
+                f"Имя: {name}\n"
+                f"Количество: {quantity}\n"
+                f"Минимальный остаток: {min_qty}\n"
+                f"Резерв: {quantity_reserve or 0}\n"
+                f"{barcode_lines}\n"
+                f"Дата обновления: {last_update or 'нет данных'}"
+            )
+            return PlainTextResponse(encrypt_payload(message), status_code=status.HTTP_200_OK)
+
+        if req_action not in ('add', 'red'):
+            return PlainTextResponse(
+                encrypt_payload("Ошибка: Неизвестное действие запроса!"),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
 
         # Текущее время
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -393,6 +424,8 @@ async def apiprocess_scan(data: ScanRequest, request: Request):
             if cursor.rowcount == 0:
                 msg = "Ошибка: Остаток не может быть меньше нуля!"
                 return PlainTextResponse(encrypt_payload(msg), status_code=status.HTTP_409_CONFLICT)
+
+        await update_cartridge_timestamp(db, cartridge_id, current_time)
                   
         # Получаем новый остаток и имя для ответа
         result = await get_cartridge_name_and_quantity(db, cartridge_id)
@@ -409,7 +442,15 @@ async def apiprocess_scan(data: ScanRequest, request: Request):
         await commit_changes(db)
 
         # Шифро-ответ ТСД: запрос обработан
-        return PlainTextResponse(encrypt_payload(f"Имя: {name}\nШтрих-код:{req_barcode}\nОстаток: {new_stock}"), status_code=status.HTTP_200_OK)
+        operation_name = "Добавление картриджа" if req_action == 'add' else "Расход картриджа"
+        message = (
+            f"Операция: {operation_name}\n"
+            f"Дата и время: {current_time}\n"
+            f"Имя: {name}\n"
+            f"Штрих-код: {req_barcode}\n"
+            f"Остаток: {new_stock}\n"
+        )
+        return PlainTextResponse(encrypt_payload(message), status_code=status.HTTP_200_OK)
 
     except Exception as e:
         # Шифро-ответ ТСД: непонятный косяк на сервере

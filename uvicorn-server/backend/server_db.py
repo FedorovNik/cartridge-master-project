@@ -124,6 +124,21 @@ async def get_cartridge_by_barcode(db: aiosqlite.Connection, barcode: str):
     return await cursor.fetchone()
 
 
+async def get_cartridge_barcodes(db: aiosqlite.Connection, cartridge_id: int):
+    """
+    Получает все штрихкоды, привязанные к картриджу.
+
+    Returns:
+        Список штрихкодов.
+    """
+    cursor = await db.execute(
+        "SELECT barcode FROM barcodes WHERE cartridge_id = ? ORDER BY barcode",
+        (cartridge_id,)
+    )
+    rows = await cursor.fetchall()
+    return [row[0] for row in rows]
+
+
 async def get_cartridge_name_and_quantity(db: aiosqlite.Connection, cartridge_id: int):
     """
     Получает название и количество картриджа по ID
@@ -137,6 +152,25 @@ async def get_cartridge_name_and_quantity(db: aiosqlite.Connection, cartridge_id
     """
     cursor = await db.execute(
         "SELECT cartridge_name, quantity FROM cartridges WHERE id = ?", 
+        (cartridge_id,)
+    )
+    return await cursor.fetchone()
+
+
+async def get_cartridge_info(db: aiosqlite.Connection, cartridge_id: int):
+    """
+    Получает информацию о картридже по его ID.
+
+    Returns:
+        Кортеж (id, cartridge_name, quantity, min_qty, last_update,
+        quantity_reserve) или None если картридж не найден
+    """
+    cursor = await db.execute(
+        """
+        SELECT id, cartridge_name, quantity, min_qty, last_update, quantity_reserve
+        FROM cartridges
+        WHERE id = ?
+        """,
         (cartridge_id,)
     )
     return await cursor.fetchone()
@@ -191,6 +225,18 @@ async def update_cartridge_quantity_subtract(db: aiosqlite.Connection, cartridge
         (cartridge_id,)
     )
     return cursor
+
+
+async def update_cartridge_timestamp(
+    db: aiosqlite.Connection,
+    cartridge_id: int,
+    timestamp: str
+):
+    """Обновляет дату последней операции с картриджем."""
+    await db.execute(
+        "UPDATE cartridges SET last_update = ? WHERE id = ?",
+        (timestamp, cartridge_id)
+    )
 
 
 async def get_all_cartridges(db: aiosqlite.Connection):
