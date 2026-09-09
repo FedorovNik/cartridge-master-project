@@ -1,33 +1,32 @@
+version: '3.8'
+
 services:
   backend:
-    build:
-      context: ./uvicorn-server
+    build: 
+      context: ./uvicorn-server # Путь к папке с Dockerfile [source: 1]
+    container_name: cartridgemaster-backend
     restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      DB_NAME: /data/inventory.db
-      UVICORN_HOST: 0.0.0.0
-      UVICORN_PORT: 8080
     volumes:
-      - ./data:/data
-    expose:
-      - "8080"
+      - ./data:/data # Проброс директории для inventory.db [source: 5]
+    environment:
+      - UVICORN_HOST=0.0.0.0 [source: 5]
+      - UVICORN_PORT=8080 [source: 5]
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:latest
+    container_name: cartridgemaster-proxy
     restart: unless-stopped
-    depends_on:
-      - backend
-    env_file:
-      - .env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./caddy-proxy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
+      - ./caddy-proxy/Caddyfile:/etc/caddy/Caddyfile:ro # Твой конфиг [source: 1]
+      - caddy_data:/data # Критично важно для работы tls internal!
       - caddy_config:/config
+    environment:
+      - SITE_ADDRESS=192.168.0.152 # Явно передаем IP для Caddyfile [source: 1]
+    depends_on:
+      - backend
 
 volumes:
   caddy_data:
