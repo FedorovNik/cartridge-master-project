@@ -12,6 +12,7 @@ CartridgeMaster - серверная часть приложения.
 import sys
 import logging
 import uvicorn, copy
+import os
 from uvicorn.logging import DefaultFormatter
 import socket
 from server_api import app
@@ -63,4 +64,9 @@ if __name__ == "__main__":
     # Uvicorn слушает только запросы с сервера, на котором он запущен.
     # Сделано так, для того, чтобы нельзя было попаcть на него "в обход"
     # прокси caddy из локалки по http и 8080 порту
-    uvicorn.run(app, host="127.0.0.1", port=8080, log_config=log_config)
+    uvicorn.run(
+        app,
+        host=os.getenv("UVICORN_HOST", "127.0.0.1"),
+        port=int(os.getenv("UVICORN_PORT", "8080")),
+        log_config=log_config,
+    )
