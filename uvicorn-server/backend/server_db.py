@@ -36,16 +36,16 @@ async def init_database(db_connection):
         
         # Таблица штрихкодов
         await db_connection.execute("""
-            CREATE INDEX IF NOT EXISTS idx_cartridge_id ON barcodes(cartridge_id);
-        """)
-        
-        # Таблица штрихкодов
-        await db_connection.execute("""
             CREATE TABLE IF NOT EXISTS barcodes (
                 barcode TEXT PRIMARY KEY,
                 cartridge_id INTEGER NOT NULL,
                 FOREIGN KEY (cartridge_id) REFERENCES cartridges(id)
             )
+        """)
+
+        # Индекс штрихкодов создаётся после таблицы.
+        await db_connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cartridge_id ON barcodes(cartridge_id);
         """)
         
         # Таблица истории изменений
