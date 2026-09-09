@@ -1,12 +1,12 @@
 # HTTP трафик пускаем на бек на 8080 порт, только если путь - /scan
-http://10.0.9.173 {
+http://{$SITE_ADDRESS} {
     # Если путь совпадает с..
     @scan {
         path /scan /scan/*
     }
     # Отправляем в бэк 8080 порт
     handle @scan {
-        reverse_proxy localhost:8080
+        reverse_proxy backend:8080
     }
     # Все остальное идет нафиг
     handle {
@@ -16,8 +16,8 @@ http://10.0.9.173 {
 
 # (Прокси-колдовство caddy с сертификатами)
 # С HTTPS 443 перекидываем на бэк 8080 порт
-https://10.0.9.173 {
+https://{$SITE_ADDRESS} {
     # С https перекидываем всё на бэк 8080 порт
-    reverse_proxy localhost:8080
+    reverse_proxy backend:8080
     tls internal
 }
