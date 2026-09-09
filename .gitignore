@@ -18,3 +18,7 @@ app/bot/token.py
 # Системные файлы
 .vscode/
 .DS_Store
+
+# Docker
+.env
+data/
